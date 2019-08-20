@@ -32,11 +32,7 @@ func New(device string) (*Modem, error) {
 	return nil, errors.New("unmatched device")
 }
 
-func (modem *Modem) InitDevice() {
-	results := make(chan []byte)
-	indications := make(chan []byte)
-	go modem.ReadTTY(results, indications)
-
+func (modem *Modem) InitDevice(results chan []byte) {
 	// reset the modem
 	modem.AT("ATZ", results)
 

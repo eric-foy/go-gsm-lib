@@ -7,7 +7,12 @@ import (
 	"strings"
 )
 
-func (modem *Modem) ReadTTY(results, indications chan []byte) {
+type CMTI struct {
+	memr  string
+	index string
+}
+
+func (modem *Modem) ReadTTY(results chan []byte, indications chan CMTI) {
 	defer modem.connection.Close()
 
 	buffer := make([]byte, 0, 4096)
@@ -21,6 +26,17 @@ func (modem *Modem) ReadTTY(results, indications chan []byte) {
 		buffer = append(buffer, temp[:bytesRead]...)
 
 		// TODO read indication SMS
+		newMsgStart := bytes.Index(buffer, []byte("\r\n+CMTI:"))
+		if newMsgStart != -1 {
+			newMsgEnd := bytes.Index(buffer[newMsgStart+2:], []byte("\r\n"))
+			if newMsgEnd != -1 {
+				indications <- CMTI{
+					memr:  string(buffer[newMsgStart+10 : newMsgStart+12]),
+					index: string(buffer[newMsgStart+14 : newMsgEnd+2]),
+				}
+				buffer = append(buffer[:newMsgStart], buffer[newMsgEnd+4:]...)
+			}
+		}
 
 		// TODO read suffix ERROR
 
