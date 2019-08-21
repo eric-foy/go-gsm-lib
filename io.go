@@ -1,7 +1,7 @@
 package gsm
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"log"
 	"strings"
@@ -12,53 +12,31 @@ type CMTI struct {
 	index string
 }
 
-func (modem *Modem) ReadTTY(results chan []byte, indications chan CMTI) {
+func (modem *Modem) ReadTTY() {
 	defer modem.connection.Close()
 
-	buffer := make([]byte, 0, 4096)
-	temp := make([]byte, 1460) // 1460 is max buffer size for AT
+	buf := bufio.NewReader(modem.connection)
 	for {
-		bytesRead, err := modem.connection.Read(temp)
+		line, err := buf.ReadString('\n')
 		if err != nil {
 			fmt.Println("read error:", err)
 		}
+		line = strings.TrimSpace(line)
 
-		buffer = append(buffer, temp[:bytesRead]...)
-
-		// TODO read indication SMS
-		newMsgStart := bytes.Index(buffer, []byte("\r\n+CMTI:"))
-		if newMsgStart != -1 {
-			newMsgEnd := bytes.Index(buffer[newMsgStart+2:], []byte("\r\n"))
-			if newMsgEnd != -1 {
-				indications <- CMTI{
-					memr:  string(buffer[newMsgStart+10 : newMsgStart+12]),
-					index: string(buffer[newMsgStart+14 : newMsgEnd+2]),
-				}
-				buffer = append(buffer[:newMsgStart], buffer[newMsgEnd+4:]...)
+		switch {
+		case line == "OK" || line == "ERROR":
+			modem.results <- line
+		case len(line) >= 6 && line[:6] == "+CMTI:":
+			fields := strings.Split(line[7:], ",")
+			modem.indications <- CMTI{
+				memr:  fields[0][1:3],
+				index: fields[1],
 			}
-		}
-
-		// TODO read suffix ERROR
-
-		if bytes.HasSuffix(buffer, []byte("\r\nOK\r\n")) {
-			results <- []byte(buffer)
-			buffer = buffer[:0]
 		}
 	}
 }
 
-func (modem *Modem) AT(cmd string, results chan []byte) string {
-	modem.SendAT(cmd)
-	return modem.ReceiveAT(results)
-}
-
-func (modem *Modem) SendAT(cmd string) {
-	modem.connection.Write([]byte(cmd + "\n"))
-	log.Printf("Sent: %s\n", cmd)
-}
-
-func (modem *Modem) ReceiveAT(results chan []byte) string {
-	result := string(<-results)
-	log.Printf("Received: %s\n", strings.TrimSpace(result))
-	return result
+func (modem *Modem) Write(format string, a ...interface{}) {
+	log.Printf(format, a...)
+	modem.connection.Write([]byte(fmt.Sprintf(format, a...)))
 }

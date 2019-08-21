@@ -1,13 +1,17 @@
 package gsm
 
-import (
-	"fmt"
-	"log"
-)
+func (modem *Modem) SendSMS(number, text string) {
+	modem.Write("AT+CMGS=\"%s\",129\n", number)
+	modem.Write("%s%c", text, '\x1A')
+}
 
-func (modem *Modem) SMS(number, text string, results chan []byte) string {
-	modem.connection.Write([]byte(fmt.Sprintf("AT+CMGW=\"%s\"", number)))
-	modem.connection.Write([]byte(fmt.Sprintf("%s%c", text, '\x1A')))
-	log.Printf("SMS sent:\nTo: %s\nBody: %s\n", number, text)
-	return modem.ReceiveAT(results)
+func (modem *Modem) WriteMsgToMem(number, text string) {
+}
+
+func (modem *Modem) SendMsgFromStorage(index string) {
+}
+
+func (modem *Modem) ReadMessage(index string) string {
+	modem.Write("AT+CMGR=%s\n", index)
+	return ""
 }

@@ -3,14 +3,21 @@ package gsm
 import (
 	"log"
 	"testing"
+	"time"
 )
 
-func TestInitDevice(t *testing.T) {
+func TestSpamAT(t *testing.T) {
 	t.Skip()
 	modem, _ := New("serial_tcp")
 
 	go modem.ReadTTY()
-	go modem.InitDevice()
+	go func() {
+		for {
+			modem.AT("AT")
+			time.Sleep(time.Second)
+		}
+	}()
+
 	for {
 		cmti := <-modem.indications
 		log.Printf("%s,%s", cmti.memr, cmti.index)

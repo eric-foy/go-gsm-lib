@@ -2,11 +2,15 @@ package gsm
 
 import (
 	"errors"
+	"log"
 	"net"
 )
 
 type Modem struct {
-	connection net.Conn
+	connection  net.Conn
+	queue       chan string
+	results     chan string
+	indications chan CMTI
 }
 
 func New(device string) (*Modem, error) {
@@ -20,7 +24,10 @@ func New(device string) (*Modem, error) {
 		}
 
 		modem := &Modem{
-			connection: connection,
+			connection:  connection,
+			queue:       make(chan string),
+			results:     make(chan string),
+			indications: make(chan CMTI),
 		}
 		return modem, nil
 	// TTY set with:
@@ -32,19 +39,26 @@ func New(device string) (*Modem, error) {
 	return nil, errors.New("unmatched device")
 }
 
-func (modem *Modem) InitDevice(results chan []byte) {
+func (modem *Modem) InitDevice() {
 	// reset the modem
-	modem.AT("ATZ", results)
+	modem.AT("ATZ")
 
 	// reset settings
-	modem.AT("AT&F", results)
+	modem.AT("AT&F")
 
 	// echo off
-	modem.AT("ATE0", results)
+	modem.AT("ATE0")
 
 	// text mode
-	modem.AT("AT+CMGF=1", results)
+	modem.AT("AT+CMGF=1")
 
 	// Init string
-	modem.AT("AT+CNMI=2,1,0,1,0", results)
+	modem.AT("AT+CNMI=2,1,0,1,0")
+}
+
+func (modem *Modem) AT(cmd string) {
+	modem.Write("%s\n", cmd)
+
+	// TODO detecting and wrapping ERROR
+	log.Printf("Received: %s\n", <-modem.results)
 }

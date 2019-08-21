@@ -5,12 +5,15 @@ import (
 	"testing"
 )
 
-func TestInitDevice(t *testing.T) {
-	t.Skip()
+func TestSendSMS(t *testing.T) {
+	//t.Skip()
 	modem, _ := New("serial_tcp")
 
 	go modem.ReadTTY()
-	go modem.InitDevice()
+	go func() {
+		modem.SendSMS("9376721929", "a")
+	}()
+
 	for {
 		cmti := <-modem.indications
 		log.Printf("%s,%s", cmti.memr, cmti.index)
