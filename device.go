@@ -2,15 +2,32 @@ package gsm
 
 import (
 	"errors"
-	"log"
 	"net"
 )
 
 type Modem struct {
-	connection  net.Conn
-	queue       chan string
-	results     chan string
-	indications chan CMTI
+	connection net.Conn
+	queue      chan string
+	results    chan string
+	cmt        chan CMT
+	cmti       chan CMTI
+	cmgs       chan CMGS
+}
+
+type CMT struct {
+	oa     string
+	scts   string
+	length int
+	data   string
+}
+
+type CMTI struct {
+	memr  string
+	index string
+}
+
+type CMGS struct {
+	mr string
 }
 
 func New(device string) (*Modem, error) {
@@ -24,10 +41,12 @@ func New(device string) (*Modem, error) {
 		}
 
 		modem := &Modem{
-			connection:  connection,
-			queue:       make(chan string),
-			results:     make(chan string),
-			indications: make(chan CMTI),
+			connection: connection,
+			queue:      make(chan string),
+			results:    make(chan string),
+			cmt:        make(chan CMT),
+			cmti:       make(chan CMTI),
+			cmgs:       make(chan CMGS),
 		}
 		return modem, nil
 	// TTY set with:
@@ -52,13 +71,16 @@ func (modem *Modem) InitDevice() {
 	// text mode
 	modem.AT("AT+CMGF=1")
 
-	// Init string
-	modem.AT("AT+CNMI=2,1,0,1,0")
+	// detailed header information in text mode
+	modem.AT("AT+CSDH=1")
+
+	// init string
+	modem.AT("AT+CNMI=2,2,0,1,0")
 }
 
-func (modem *Modem) AT(cmd string) {
+func (modem *Modem) AT(cmd string) string {
 	modem.Write("%s\n", cmd)
 
 	// TODO detecting and wrapping ERROR
-	log.Printf("Received: %s\n", <-modem.results)
+	return <-modem.results
 }

@@ -6,7 +6,7 @@ import (
 )
 
 func TestSendSMS(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	modem, _ := New("serial_tcp")
 
 	go modem.ReadTTY()
@@ -15,7 +15,7 @@ func TestSendSMS(t *testing.T) {
 	}()
 
 	for {
-		cmti := <-modem.indications
+		cmti := <-modem.cmti
 		log.Printf("%s,%s", cmti.memr, cmti.index)
 	}
 }

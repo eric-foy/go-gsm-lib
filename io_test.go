@@ -19,7 +19,7 @@ func TestSpamAT(t *testing.T) {
 	}()
 
 	for {
-		cmti := <-modem.indications
+		cmti := <-modem.cmti
 		log.Printf("%s,%s", cmti.memr, cmti.index)
 	}
 }

@@ -1,14 +1,9 @@
 package gsm
 
-func (modem *Modem) SendSMS(number, text string) {
+func (modem *Modem) SendSMS(number, text string) CMGS {
 	modem.Write("AT+CMGS=\"%s\",129\n", number)
 	modem.Write("%s%c", text, '\x1A')
-}
-
-func (modem *Modem) WriteMsgToMem(number, text string) {
-}
-
-func (modem *Modem) SendMsgFromStorage(index string) {
+	return <-modem.cmgs
 }
 
 func (modem *Modem) ReadMessage(index string) string {
