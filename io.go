@@ -9,9 +9,9 @@ import (
 )
 
 func (modem *Modem) ReadTTY() {
-	defer modem.connection.Close()
+	defer modem.device.Close()
 
-	buf := bufio.NewReader(modem.connection)
+	buf := bufio.NewReader(modem.device)
 	for {
 		line, err := buf.ReadString('\n')
 		if err != nil {
@@ -23,7 +23,7 @@ func (modem *Modem) ReadTTY() {
 
 		switch {
 		case line == "OK" || line == "ERROR":
-			modem.results <- line
+			modem.Results <- line
 		case len(line) >= 5 && line[:5] == "+CMT:":
 			fields := strings.Split(line[6:], ",")
 			length, err := strconv.Atoi(fields[10])
@@ -37,21 +37,21 @@ func (modem *Modem) ReadTTY() {
 			}
 			fmt.Println(string(tmp[:n]))
 			cmt := CMT{
-				oa:     fields[0],
-				scts:   strings.Join(fields[2:4], ","),
-				length: length,
-				data:   string(tmp[:n]),
+				Oa:     fields[0],
+				Scts:   strings.Join(fields[2:4], ","),
+				Length: length,
+				Data:   string(tmp[:n]),
 			}
-			modem.cmt <- cmt
+			modem.Cmt <- cmt
 		case len(line) >= 6 && line[:6] == "+CMTI:":
 			fields := strings.Split(line[7:], ",")
-			modem.cmti <- CMTI{
-				memr:  fields[0][1:3],
-				index: fields[1],
+			modem.Cmti <- CMTI{
+				Memr:  fields[0][1:3],
+				Index: fields[1],
 			}
 		case len(line) >= 6 && line[:6] == "+CMGS:":
-			modem.cmgs <- CMGS{
-				mr: line[7:],
+			modem.Cmgs <- CMGS{
+				Mr: line[7:],
 			}
 		}
 	}
@@ -59,5 +59,5 @@ func (modem *Modem) ReadTTY() {
 
 func (modem *Modem) Write(format string, a ...interface{}) {
 	fmt.Printf(format, a...)
-	modem.connection.Write([]byte(fmt.Sprintf(format, a...)))
+	modem.device.Write([]byte(fmt.Sprintf(format, a...)))
 }

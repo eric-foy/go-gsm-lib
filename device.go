@@ -3,59 +3,77 @@ package gsm
 import (
 	"errors"
 	"net"
+
+	"github.com/jacobsa/go-serial/serial"
 )
 
+// There has to be an already existing interface like this...
+type Device interface {
+	Read(b []byte) (n int, err error)
+	Write(b []byte) (n int, err error)
+	Close() error
+}
+
 type Modem struct {
-	connection net.Conn
-	queue      chan string
-	results    chan string
-	cmt        chan CMT
-	cmti       chan CMTI
-	cmgs       chan CMGS
+	device  Device
+	Results chan string
+	Cmt     chan CMT
+	Cmti    chan CMTI
+	Cmgs    chan CMGS
 }
 
 type CMT struct {
-	oa     string
-	scts   string
-	length int
-	data   string
+	Oa     string
+	Scts   string
+	Length int
+	Data   string
 }
 
 type CMTI struct {
-	memr  string
-	index string
+	Memr  string
+	Index string
 }
 
 type CMGS struct {
-	mr string
+	Mr string
 }
 
-func New(device string) (*Modem, error) {
-	switch device {
+func New(method, device string) (modem *Modem, err error) {
+	var dev Device
+	switch method {
 	// This is serial piped to a tcp server with socat:
 	// 	`socat -x FILE:/dev/ttyAMA0 TCP-LISTEN:7875`
 	case "serial_tcp":
-		connection, err := net.Dial("tcp", "192.168.1.130:7875")
+		dev, err = net.Dial("tcp", device)
 		if err != nil {
 			return nil, err
 		}
-
-		modem := &Modem{
-			connection: connection,
-			queue:      make(chan string),
-			results:    make(chan string),
-			cmt:        make(chan CMT),
-			cmti:       make(chan CMTI),
-			cmgs:       make(chan CMGS),
-		}
-		return modem, nil
 	// TTY set with:
 	// 	`stty 9600 -F /dev/ttyAMA0 ignpar -icrnl -opost -onlcr -isig -icanon -echo`
 	case "serial":
-		// TODO connect with /dev/ttyAMA0
+		options := serial.OpenOptions{
+			PortName:        device,
+			BaudRate:        19200,
+			DataBits:        8,
+			StopBits:        1,
+			MinimumReadSize: 1,
+		}
+		dev, err = serial.Open(options)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("unmatched method")
 	}
 
-	return nil, errors.New("unmatched device")
+	modem = &Modem{
+		device:  dev,
+		Results: make(chan string),
+		Cmt:     make(chan CMT),
+		Cmti:    make(chan CMTI),
+		Cmgs:    make(chan CMGS),
+	}
+	return modem, nil
 }
 
 func (modem *Modem) InitDevice() {
@@ -72,6 +90,7 @@ func (modem *Modem) InitDevice() {
 	modem.AT("AT+CMGF=1")
 
 	// detailed header information in text mode
+	// This is used to read correct bytes for incoming SMS.
 	modem.AT("AT+CSDH=1")
 
 	// init string
@@ -82,5 +101,5 @@ func (modem *Modem) AT(cmd string) string {
 	modem.Write("%s\n", cmd)
 
 	// TODO detecting and wrapping ERROR
-	return <-modem.results
+	return <-modem.Results
 }
