@@ -11,7 +11,7 @@ func TestSendSMS(t *testing.T) {
 
 	go modem.ReadTTY()
 	go func() {
-		modem.SendSMS("9376721929", "a")
+		modem.SendSMS("", "a")
 	}()
 
 	for {
