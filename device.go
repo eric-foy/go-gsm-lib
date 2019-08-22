@@ -53,7 +53,7 @@ func New(method, device string) (modem *Modem, err error) {
 	case "serial":
 		options := serial.OpenOptions{
 			PortName:        device,
-			BaudRate:        19200,
+			BaudRate:        9600,
 			DataBits:        8,
 			StopBits:        1,
 			MinimumReadSize: 1,

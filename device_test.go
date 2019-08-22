@@ -18,7 +18,7 @@ func TestInitDeviceTCP(t *testing.T) {
 }
 
 func TestInitDeviceSerial(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	modem, _ := New("serial", "/dev/ttyAMA0")
 
 	go modem.ReadTTY()

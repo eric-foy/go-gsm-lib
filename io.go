@@ -37,7 +37,7 @@ func (modem *Modem) ReadTTY() {
 			}
 			fmt.Println(string(tmp[:n]))
 			cmt := CMT{
-				Oa:     fields[0],
+				Oa:     fields[0][1 : len(fields[0])-1],
 				Scts:   strings.Join(fields[2:4], ","),
 				Length: length,
 				Data:   string(tmp[:n]),
