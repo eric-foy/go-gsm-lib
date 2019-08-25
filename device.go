@@ -15,27 +15,36 @@ type Device interface {
 }
 
 type Modem struct {
-	device  Device
-	Results chan string
-	Cmt     chan CMT
-	Cmti    chan CMTI
-	Cmgs    chan CMGS
+	Device   Device
+	RespCode chan string
+	RxAT     chan interface{}
+	TxAT     chan interface{}
 }
 
-type CMT struct {
+type RxCMT struct {
 	Oa     string
 	Scts   string
 	Length int
 	Data   string
 }
 
-type CMTI struct {
+type RxCMTI struct {
 	Memr  string
 	Index string
 }
 
-type CMGS struct {
+type RxCMGS struct {
 	Mr string
+}
+
+type TxGeneric struct {
+	AT string
+}
+
+type TxCMGS struct {
+	Da   string
+	Toda int
+	Text string
 }
 
 func New(method, device string) (modem *Modem, err error) {
@@ -67,39 +76,31 @@ func New(method, device string) (modem *Modem, err error) {
 	}
 
 	modem = &Modem{
-		device:  dev,
-		Results: make(chan string),
-		Cmt:     make(chan CMT),
-		Cmti:    make(chan CMTI),
-		Cmgs:    make(chan CMGS),
+		Device:   dev,
+		RespCode: make(chan string),
+		TxAT:     make(chan interface{}),
+		RxAT:     make(chan interface{}),
 	}
 	return modem, nil
 }
 
 func (modem *Modem) InitDevice() {
 	// reset the modem
-	modem.AT("ATZ")
+	modem.TxAT <- TxGeneric{AT: "ATZ"}
 
 	// reset settings
-	modem.AT("AT&F")
+	modem.TxAT <- TxGeneric{AT: "AT&F"}
 
 	// echo off
-	modem.AT("ATE0")
+	modem.TxAT <- TxGeneric{AT: "ATE0"}
 
 	// text mode
-	modem.AT("AT+CMGF=1")
+	modem.TxAT <- TxGeneric{AT: "AT+CMGF=1"}
 
 	// detailed header information in text mode
 	// This is used to read correct bytes for incoming SMS.
-	modem.AT("AT+CSDH=1")
+	modem.TxAT <- TxGeneric{AT: "AT+CSDH=1"}
 
 	// init string
-	modem.AT("AT+CNMI=2,2,0,1,0")
-}
-
-func (modem *Modem) AT(cmd string) string {
-	modem.Write("%s\n", cmd)
-
-	// TODO detecting and wrapping ERROR
-	return <-modem.Results
+	modem.TxAT <- TxGeneric{AT: "AT+CNMI=2,2,0,1,0"}
 }

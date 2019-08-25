@@ -1,15 +1,6 @@
 package gsm
 
-import "errors"
-
-func (modem *Modem) SendSMS(number, text string) (CMGS, error) {
-	modem.Write("AT+CMGS=\"%s\",145\n", number)
+func (modem *Modem) SendMessage(da string, toda int, text string) {
+	modem.Write("AT+CMGS=\"%s\",%d\n", da, toda)
 	modem.Write("%s%c", text, '\x1A')
-
-	cmgs := <-modem.Cmgs
-	result := <-modem.Results
-	if result != "OK" {
-		return cmgs, errors.New("problem sending SMS message")
-	}
-	return cmgs, nil
 }
