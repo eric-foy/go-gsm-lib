@@ -1,6 +1,7 @@
 package gsm
 
 import (
+	"bufio"
 	"errors"
 	"net"
 
@@ -16,35 +17,10 @@ type Device interface {
 
 type Modem struct {
 	Device   Device
+	Reader   *bufio.Reader
 	RespCode chan string
 	RxAT     chan interface{}
 	TxAT     chan interface{}
-}
-
-type RxCMT struct {
-	Oa     string
-	Scts   string
-	Length int
-	Data   string
-}
-
-type RxCMTI struct {
-	Memr  string
-	Index string
-}
-
-type RxCMGS struct {
-	Mr string
-}
-
-type TxGeneric struct {
-	AT string
-}
-
-type TxCMGS struct {
-	Da   string
-	Toda int
-	Text string
 }
 
 func New(method, device string) (modem *Modem, err error) {
@@ -77,6 +53,7 @@ func New(method, device string) (modem *Modem, err error) {
 
 	modem = &Modem{
 		Device:   dev,
+		Reader:   bufio.NewReader(dev),
 		RespCode: make(chan string),
 		TxAT:     make(chan interface{}),
 		RxAT:     make(chan interface{}),

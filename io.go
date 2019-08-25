@@ -1,17 +1,14 @@
 package gsm
 
 import (
-	"bufio"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 )
 
 func (modem *Modem) ReadTTY() {
-	buf := bufio.NewReader(modem.Device)
 	for {
-		line, err := buf.ReadString('\n')
+		line, err := modem.Reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("read error:", err)
 		}
@@ -23,23 +20,7 @@ func (modem *Modem) ReadTTY() {
 		case line == "OK" || line == "ERROR":
 			go func() { modem.RespCode <- line }()
 		case len(line) >= 5 && line[:5] == "+CMT:":
-			fields := strings.Split(line[6:], ",")
-			length, err := strconv.Atoi(fields[10])
-			if err != nil {
-				fmt.Println("SMS length conv error")
-			}
-			tmp := make([]byte, length)
-			n, err := io.ReadFull(buf, tmp)
-			if err != nil {
-				fmt.Println("SMS read error:", err)
-			}
-			fmt.Println(string(tmp[:n]))
-			cmt := RxCMT{
-				Oa:     fields[0][1 : len(fields[0])-1],
-				Scts:   strings.Join(fields[2:4], ","),
-				Length: length,
-				Data:   string(tmp[:n]),
-			}
+			cmt := modem.ParseCMT(line)
 			go func() { modem.RxAT <- cmt }()
 		case len(line) >= 6 && line[:6] == "+CMTI:":
 			fields := strings.Split(line[7:], ",")
@@ -55,6 +36,15 @@ func (modem *Modem) ReadTTY() {
 			go func() { modem.RxAT <- cmgs }()
 		}
 	}
+}
+
+func (modem *Modem) ReadBytes(length int) []byte {
+	tmp := make([]byte, length)
+	n, err := io.ReadFull(modem.Reader, tmp)
+	if err != nil {
+		fmt.Printf("read error: %s\n", err)
+	}
+	return tmp[:n]
 }
 
 func (modem *Modem) WriteTTY() {
