@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// ReadTTY reads the serial device responsible for the modem line by line. It parses the line depending on the AT command read at the begining, splits the tokens by known byte length or position from comma seperated fields.
 func (modem *Modem) ReadTTY() {
 	for {
 		line, err := modem.Reader.ReadString('\n')
@@ -20,8 +21,7 @@ func (modem *Modem) ReadTTY() {
 		case line == "OK" || line == "ERROR":
 			go func() { modem.RespCode <- line }()
 		case len(line) >= 5 && line[:5] == "+CMT:":
-			cmt := modem.ParseCMT(line)
-			go func() { modem.RxAT <- cmt }()
+			go func() { modem.RxAT <- modem.ParseCMT(line) }()
 		case len(line) >= 6 && line[:6] == "+CMTI:":
 			fields := strings.Split(line[7:], ",")
 			cmti := RxCMTI{
@@ -38,6 +38,7 @@ func (modem *Modem) ReadTTY() {
 	}
 }
 
+// ReadBytes reads the given number of bytes from the modem.
 func (modem *Modem) ReadBytes(length int) []byte {
 	tmp := make([]byte, length)
 	n, err := io.ReadFull(modem.Reader, tmp)
@@ -47,6 +48,7 @@ func (modem *Modem) ReadBytes(length int) []byte {
 	return tmp[:n]
 }
 
+// WriteTTY upon receiving from the channel writes an AT command to the modem and then waits for a response code after which it grabs the next command from the channel. All executed AT commands should have a response code. Indications such as incoming SMS and calls are not handled by this.
 func (modem *Modem) WriteTTY() {
 	for {
 		switch tx := (<-modem.TxAT).(type) {
@@ -65,6 +67,7 @@ func (modem *Modem) WriteTTY() {
 	}
 }
 
+// Write is a Printf like function that wraps writing to the modem.
 func (modem *Modem) Write(format string, a ...interface{}) {
 	fmt.Printf(format, a...)
 	modem.Device.Write([]byte(fmt.Sprintf(format, a...)))
